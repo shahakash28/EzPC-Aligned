@@ -25,7 +25,7 @@ SOFTWARE.
 // In split functions, OT is split
 // into offline and online phase.
 // The KKOT functions without
-// online offline split can 
+// online offline split can
 // be found in OT/kkot.h
 
 #include "OT/ot.h"
@@ -35,7 +35,7 @@ SOFTWARE.
 
 namespace sci {
 template<typename IO>
-class SplitKKOT : public OT<SplitKKOT<IO>> 
+class SplitKKOT : public OT<SplitKKOT<IO>>
 {
 public:
 	OTNP<IO> * base_ot;
@@ -48,20 +48,20 @@ public:
 	int block_size = 1024*16;
 #endif
 	const int ro_batch_size = 2048;
-	
+
 	// This specifies how much OTs to preprocess in one go.
-	// 0 means no preprocessing and all everything will be 
+	// 0 means no preprocessing and all everything will be
 	// run in the online phase.
 	int precomp_batch_size = 0;
-	
+
 	// counter denotes the number of unused pre-generated OTs.
 	int counter = precomp_batch_size;
 	int N = 0, l;
 
 	block256 *k0 = nullptr, *k1 = nullptr, *d = nullptr, *c_AND_s = nullptr,
 					 *qT  = nullptr, *tT = nullptr, *tmp = nullptr, block_s;
-	
-	// h holds the precomputed hashes which can be used directly 
+
+	// h holds the precomputed hashes which can be used directly
 	// in the online phase by xoring with the respective OT messages.
 	uint8_t **h;
 	uint64_t **h64;
@@ -76,9 +76,9 @@ public:
 	IO *io = nullptr;
 
 	SplitKKOT(
-			int party, 
-			IO * io, 
-			int N) 
+			int party,
+			IO * io,
+			int N)
 	{
 		assert(party == ALICE || party == BOB);
 		this->party = party;
@@ -87,10 +87,10 @@ public:
 		this->N = N;
 		base_ot = new OTNP<IO>(io);
 		s = new bool[lambda];
-		k0 = new block256[lambda];
-		k1 = new block256[lambda];
-		d = new block256[block_size];
-		c_AND_s = new block256[lambda];
+		k0 = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
+		k1 = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
+		d = (block256 *)aligned_alloc(256, block_size*sizeof(block256));
+		c_AND_s = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
 		switch (party) {
 			case ALICE:
 				h = new uint8_t*[N];
@@ -112,11 +112,11 @@ public:
 		}
 		G0 = new PRG256[lambda];
 		G1 = new PRG256[lambda];
-		tmp = new block256[block_size/256];
+		tmp = (block256 *)aligned_alloc(256, block_size/256*sizeof(block256));
 		extended_r = new uint8_t[block_size];
 	}
 
-	~SplitKKOT() 
+	~SplitKKOT()
 	{
 		delete base_ot;
 		delete[] s;
@@ -149,13 +149,13 @@ public:
 	}
 
 	void set_precomp_batch_size(
-			int batch_size) 
+			int batch_size)
 	{
 		this->precomp_batch_size = batch_size;
 		this->counter = batch_size;
 		if (precomp_masks){
 			delete[] c_AND_s;
-			c_AND_s = new block256[lambda];
+			c_AND_s = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
 			precomp_masks = false;
 		}
 		switch (party) {
@@ -197,8 +197,8 @@ public:
 	}
 
 	void setup_send(
-			block256 * in_k0 = nullptr, 
-			bool * in_s = nullptr) 
+			block256 * in_k0 = nullptr,
+			bool * in_s = nullptr)
 	{
 		setup = true;
 		if(in_s != nullptr) {
@@ -215,8 +215,8 @@ public:
 	}
 
 	void setup_recv(
-			block256 * in_k0 = nullptr, 
-			block256 * in_k1 = nullptr) 
+			block256 * in_k0 = nullptr,
+			block256 * in_k1 = nullptr)
 	{
 		setup = true;
 		if(in_k0 !=nullptr) {
@@ -233,7 +233,7 @@ public:
 		}
 	}
 
-	void precompute_masks() 
+	void precompute_masks()
 	{
 		assert(setup == true);
 		precomp_masks = true;
@@ -248,7 +248,7 @@ public:
 		return ((length + block_size - 1) / block_size) * block_size;
 	}
 
-	void preprocess() 
+	void preprocess()
 	{
 		switch (party) {
 			case ALICE:
@@ -269,11 +269,11 @@ public:
 	}
 
 	void send_pre(
-			int length) 
+			int length)
 	{
 		length = padded_length(length);
 		block256 q[block_size];
-		qT = new block256[length];
+		qT = (block256 *)aligned_alloc(256, length*sizeof(block256));
 		if(!setup) setup_send();
 		if(!precomp_masks) precompute_masks();
 
@@ -289,13 +289,13 @@ public:
 	}
 
 	void recv_pre(
-			const uint8_t* r, 
-			int length) 
+			const uint8_t* r,
+			int length)
 	{
 		int old_length = length;
 		length = padded_length(length);
 		block256 t[block_size];
-		tT = new block256[length];
+		tT = (block256 *)aligned_alloc(256, length*sizeof(block256));
 		if(not setup) setup_recv();
 
 		uint8_t* r2 = new uint8_t[length];
@@ -303,7 +303,7 @@ public:
 		memcpy(r2, r, old_length);
 		memcpy(r2+old_length, extended_r, length - old_length);
 
-		block256* dT = new block256[length];
+		block256* dT = (block256 *)aligned_alloc(256, length*sizeof(block256));
 		for(int i = 0; i < length; i++)
 			dT[i] = _mm256_lddqu_si256((const __m256i*) WH_Code[r2[i]]);
 
@@ -324,10 +324,10 @@ public:
 	}
 
 	void got_send_offline(
-			int length) 
+			int length)
 	{
 		const int bsize = ro_batch_size;
-		block256 *key = new block256[N*bsize];
+		block256 *key = (block256 *)aligned_alloc(256, N*bsize*sizeof(block256));
 		block128 *pad = new block128[N*bsize];
 
 		for(int i = 0; i < length; i+=bsize) {
@@ -350,7 +350,7 @@ public:
 	}
 
 	void got_recv_offline(
-			int length) 
+			int length)
 	{
 		const int bsize = ro_batch_size;
 		block128 *pad = new block128[N*bsize];
@@ -369,8 +369,8 @@ public:
 
 	template <typename T>
 	void got_send_online(
-			T** data, 
-			int length) 
+			T** data,
+			int length)
 	{
 		const int bsize = length;//ro_batch_size;
 		uint32_t y_size = (uint32_t)ceil((N*bsize*l)/((float)sizeof(T)*8));
@@ -404,7 +404,7 @@ public:
 					}
 					counter++;
 				}
-			}	
+			}
 			else if(sizeof(T) == 1){
 				for(int i=0; i<corrected_bsize; i++){
 					for(int k=0; k<N; k++){
@@ -428,9 +428,9 @@ public:
 
 	template <typename T>
 	void got_recv_online(
-			T* data, 
-			const uint8_t* r, 
-			int length) 
+			T* data,
+			const uint8_t* r,
+			int length)
 	{
 		const int bsize = length;
 		uint32_t res_size = (uint32_t)ceil((N*length*l)/((float)sizeof(T)*8));
@@ -475,16 +475,16 @@ public:
 
 	template <typename T>
 	void got_send_post(
-			T** data, 
-			int length) 
+			T** data,
+			int length)
 	{
 		const int bsize = ro_batch_size;
-		block256 *key = new block256[N*bsize];
+		block256 *key = (block256 *)aligned_alloc(256, N*bsize*sizeof(block256));
 		block128 *pad = new block128[N*bsize];
 		uint32_t y_size = (uint32_t)ceil((N*bsize*this->l)/((float)sizeof(T)*8));
 		uint32_t corrected_y_size, corrected_bsize;
 		T y[y_size];
-		
+
 		for(int i = 0; i < length; i+=bsize) {
 			for(int j = i; j < i+bsize and j < length; ++j) {
 				for(int k = 0; k < N; k++) {
@@ -512,9 +512,9 @@ public:
 
 	template <typename T>
 	void got_recv_post(
-			T* data, 
-			const uint8_t* r, 
-			int length) 
+			T* data,
+			const uint8_t* r,
+			int length)
 	{
 		const int bsize = ro_batch_size;
 		block128 *pad = new block128[N*bsize];
@@ -543,9 +543,9 @@ public:
 	}
 
 	void send_impl(
-			uint8_t** data, 
-			int length, 
-			int l) 
+			uint8_t** data,
+			int length,
+			int l)
 	{
 		assert(N <= lambda && N >= 2);
 		assert(l <= 8 && l >= 1);
@@ -563,10 +563,10 @@ public:
 	}
 
 	void recv_impl(
-			uint8_t* data, 
-			uint8_t* b, 
-			int length, 
-			int l) 
+			uint8_t* data,
+			uint8_t* b,
+			int length,
+			int l)
 	{
 		assert(N <= lambda && N >= 2);
 		assert(l <= 8 && l >= 1);
@@ -584,9 +584,9 @@ public:
 	}
 
 	void send_impl(
-			uint64_t** data, 
-			int length, 
-			int l) 
+			uint64_t** data,
+			int length,
+			int l)
 	{
 		assert(N <= lambda && N >= 2);
 		assert(l > 8);
@@ -603,10 +603,10 @@ public:
 	}
 
 	void recv_impl(
-			uint64_t* data, 
-			uint8_t* b, 
-			int length, 
-			int l) 
+			uint64_t* data,
+			uint8_t* b,
+			int length,
+			int l)
 	{
 		assert(N <= lambda && N >= 2);
 		assert(l > 8);

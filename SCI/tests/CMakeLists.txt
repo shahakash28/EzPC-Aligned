@@ -2,7 +2,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 macro (add_test _name)
 	add_executable(${_name} "test_${_name}.cpp")
-    target_link_libraries(${_name} SCI-Protocols) 
+    target_link_libraries(${_name} SCI-Protocols)
 endmacro()
 
 # Tests
@@ -15,4 +15,5 @@ add_test(ring_argmax)
 add_test(field_maxpool)
 add_test(ring_maxpool)
 add_test(linear)
+add_test(batche)
 add_test(functionalities)
