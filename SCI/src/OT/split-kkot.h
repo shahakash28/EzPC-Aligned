@@ -59,8 +59,8 @@ public:
 	int N = 0, l;
 
 	block256 *k0 = nullptr, *k1 = nullptr, *d = nullptr, *c_AND_s = nullptr,
-					 *qT  = nullptr, *tT = nullptr, *tmp = nullptr, block_s;
-
+					 *qT  = nullptr, *tT = nullptr, *tmp = nullptr;
+  block256 *block_s;
 	// h holds the precomputed hashes which can be used directly
 	// in the online phase by xoring with the respective OT messages.
 	uint8_t **h;
@@ -91,6 +91,7 @@ public:
 		k1 = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
 		d = (block256 *)aligned_alloc(256, block_size*sizeof(block256));
 		c_AND_s = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
+		block_s = (block256 *)aligned_alloc(256, sizeof(block256));
 		switch (party) {
 			case ALICE:
 				h = new uint8_t*[N];
@@ -204,11 +205,11 @@ public:
 		if(in_s != nullptr) {
 			memcpy(k0, in_k0, lambda*sizeof(block256));
 			memcpy(s, in_s, lambda);
-			block_s = bool_to256(s);
+			*block_s = bool_to256(s);
 		} else {
 			prg.random_bool(s, lambda);
 			base_ot->recv(k0, s, lambda);
-			block_s = bool_to256(s);
+			*block_s = bool_to256(s);
 		}
 		for(int i = 0; i < lambda; ++i)
 			G0[i].reseed(&k0[i]);
@@ -238,7 +239,7 @@ public:
 		assert(setup == true);
 		precomp_masks = true;
 		for(int i = 0; i < N; i++) {
-			c_AND_s[i] = andBlocks(_mm256_lddqu_si256((const __m256i*) WH_Code[i]), block_s);
+			c_AND_s[i] = andBlocks(_mm256_lddqu_si256((const __m256i*) WH_Code[i]), *block_s);
 		}
 	}
 
