@@ -78,6 +78,6 @@ int main(int argc, char** argv) {
       }
     }
 
-    uint8_t** res_shares;
+    uint8_t* res_shares;
     perform_batch_equality(inputs, party, num_cmps, batch_size, address, port, res_shares);
 }

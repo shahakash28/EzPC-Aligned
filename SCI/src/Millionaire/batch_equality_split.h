@@ -31,7 +31,7 @@ SOFTWARE.
 using namespace sci;
 using namespace std;
 
-struct timespec start, finish, lomstart, lomfinish, locstart, locfinish;
+//struct timespec start, finish, lomstart, lomfinish, locstart, locfinish;
 
 template<typename IO>
 class BatchEqualitySplit {
@@ -70,7 +70,7 @@ class BatchEqualitySplit {
 			this->batch_size = batch_size;
 			this->num_cmps = num_cmps;
 			this->triple_gen1 = new TripleGenerator<IO>(party, io1, otpack1);
-      this->triple_gen2 = new TripleGenerator<IO>(party, io2, otpack2);
+      this->triple_gen2 = new TripleGenerator<IO>(3-party, io2, otpack2);
 			configure();
 		}
 
@@ -97,7 +97,7 @@ class BatchEqualitySplit {
 		void computeLeafOTs(uint64_t* data)
 		{
 
-			clock_gettime(CLOCK_MONOTONIC, &start);
+			//clock_gettime(CLOCK_MONOTONIC, &start);
 			uint8_t* digits; // num_digits * num_cmps
 
 			if(this->party == sci::ALICE) {
@@ -126,7 +126,7 @@ class BatchEqualitySplit {
 
 				// Set Leaf OT messages
 				triple_gen1->prg->random_bool((bool*)leaf_eq, batch_size*num_digits*num_cmps);
-				clock_gettime(CLOCK_MONOTONIC, &lomstart);
+				//clock_gettime(CLOCK_MONOTONIC, &lomstart);
 				for(int i = 0; i < num_digits; i++) {
 					for(int j = 0; j < num_cmps; j++) {
 						if (i == (num_digits - 1) && (r > 0)){
@@ -144,9 +144,9 @@ class BatchEqualitySplit {
 						}
 					}
 				}
-				clock_gettime(CLOCK_MONOTONIC, &lomfinish);
+				//clock_gettime(CLOCK_MONOTONIC, &lomfinish);
 
-				clock_gettime(CLOCK_MONOTONIC, &locstart);
+				//clock_gettime(CLOCK_MONOTONIC, &locstart);
 
 				// Perform Leaf OTs
 #ifdef WAN_EXEC
@@ -179,13 +179,13 @@ class BatchEqualitySplit {
 				for(int i = 0; i < num_digits*num_cmps; i++)
 					delete[] leaf_ot_messages[i];
 				delete[] leaf_ot_messages;
-				clock_gettime(CLOCK_MONOTONIC, &locfinish);
+				/*clock_gettime(CLOCK_MONOTONIC, &locfinish);
 				double total_time = (lomfinish.tv_sec - lomstart.tv_sec);
 				total_time += (lomfinish.tv_nsec - lomstart.tv_nsec) / 1000000000.0;
 				std::cout<<"Leaf OT Message Time: "<<total_time<<std::endl;
 				total_time = (locfinish.tv_sec - locstart.tv_sec);
 				total_time += (locfinish.tv_nsec - locstart.tv_nsec) / 1000000000.0;
-				std::cout<<"Leaf OT Comm. Time "<<total_time<<std::endl;
+				std::cout<<"Leaf OT Comm. Time "<<total_time<<std::endl;*/
 
 			}
 			else // party = sci::BOB
@@ -230,10 +230,10 @@ class BatchEqualitySplit {
 				}
 			}
 
-			clock_gettime(CLOCK_MONOTONIC, &finish);
+			/*clock_gettime(CLOCK_MONOTONIC, &finish);
 			double total_time = (finish.tv_sec - start.tv_sec);
   		total_time += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-      std::cout<<"Leaf OT-Time: "<<total_time<<std::endl;
+      std::cout<<"Leaf OT-Time: "<<total_time<<std::endl;*/
 
 			/*for(int i=0; i<10; i++) {
 				for(int j=0;j<batch_size; j++) {
@@ -287,7 +287,7 @@ class BatchEqualitySplit {
       std::cout<<"Triple Time: "<<total_time<<std::endl;
 
 			std::cout<<"CP 2"<< std::endl;*/
-			clock_gettime(CLOCK_MONOTONIC, &start);
+			//clock_gettime(CLOCK_MONOTONIC, &start);
 			// Combine leaf OT results in a bottom-up fashion
 			int counter_std = 0, old_counter_std = 0;
 			int counter_corr = 0, old_counter_corr = 0;
@@ -359,19 +359,19 @@ class BatchEqualitySplit {
 				old_triple_count= triple_count;
 			}
 
-			clock_gettime(CLOCK_MONOTONIC, &finish);
+			/*clock_gettime(CLOCK_MONOTONIC, &finish);
 			double total_time = (finish.tv_sec - start.tv_sec);
   		total_time += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
-      std::cout<<"AND Time: "<<total_time<<std::endl;
+      std::cout<<"AND Time: "<<total_time<<std::endl;*/
 
-			/*std::cout<<"Some Outputs"<< std::endl;
+			std::cout<<"Some Outputs"<< std::endl;
 
-			for(int i=0; i<10; i++) {
+			for(int i=0; i<num_cmps; i++) {
 				for(int j=0; j<batch_size; j++) {
 					std::cout<<(int)leaf_eq[j*num_digits*num_cmps+i]<< " ";
 				}
 				std::cout<< std::endl;
-			}*/
+			}
 
 			//cleanup
 			delete[] ei;
@@ -431,7 +431,7 @@ void generate_triples_thread(BatchEqualitySplit<NetIO>* compare) {
   compare->generate_triples();
 }
 
-void perform_batch_equality(uint64_t* inputs, int party, int num_cmps, int batch_size, string address, int port, uint8_t** res_shares) {
+void perform_batch_equality(uint64_t* inputs, int party, int num_cmps, int batch_size, string address, int port, uint8_t* res_shares) {
     int l=62, b=5;
 	  sci::NetIO* ioArr[2];
     sci::OTPack<sci::NetIO> *otpackArr[2];
@@ -444,14 +444,14 @@ void perform_batch_equality(uint64_t* inputs, int party, int num_cmps, int batch
     ioArr[1] = new NetIO(party==1 ? nullptr:address.c_str(), port+1);
 
     otpackArr[0] = new OTPack<NetIO>(ioArr[0], party, b, l);
-    otpackArr[1] = new OTPack<NetIO>(ioArr[1], party, b, l);
+    otpackArr[1] = new OTPack<NetIO>(ioArr[1], 3-party, b, l);
     std::cout << "All Base OTs Done" << std::endl;
 
-  uint64_t comm_sent = 0;
+  /*uint64_t comm_sent = 0;
 	uint64_t multiThreadedIOStart[2];
 	for(int i=0;i<2;i++){
 		multiThreadedIOStart[i] = ioArr[i]->counter;
-	}
+	}*/
 
   BatchEqualitySplit<NetIO>* compare;
   compare = new BatchEqualitySplit<NetIO>(party, l, b, batch_size, num_cmps, ioArr[0], ioArr[1], otpackArr[0], otpackArr[1]);
@@ -466,11 +466,11 @@ void perform_batch_equality(uint64_t* inputs, int party, int num_cmps, int batch
 
     compare->traverse_and_compute_ANDs();
 
-    for(int i=0;i<2;i++){
+    /*for(int i=0;i<2;i++){
   		auto curComm = (ioArr[i]->counter) - multiThreadedIOStart[i];
   		comm_sent += curComm;
   	}
-      std::cout << "Comm. Sent/ell: " << comm_sent << std::endl;
+      std::cout << "Comm. Sent/ell: " << comm_sent << std::endl;*/
 
     /************** Verification ****************/
     /********************************************/
