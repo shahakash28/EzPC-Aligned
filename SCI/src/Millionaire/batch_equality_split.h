@@ -52,25 +52,15 @@ class BatchEqualitySplit {
 				int bitlength,
 				int log_radix_base,
 				int batch_size,
-				int num_cmps,
-				IO* io1,
-        IO* io2,
-				sci::OTPack<IO> *otpack1,
-        sci::OTPack<IO> *otpack2)
+				int num_cmps)
 		{
 			assert(log_radix_base <= 8);
 			assert(bitlength <= 64);
 			this->party = party;
 			this->l = bitlength;
 			this->beta = log_radix_base;
-			this->io1 = io1;
-			this->otpack1 = otpack1;
-      this->io2 = io2;
-      this->otpack2 = otpack2;
 			this->batch_size = batch_size;
 			this->num_cmps = num_cmps;
-			this->triple_gen1 = new TripleGenerator<IO>(party, io1, otpack1);
-      this->triple_gen2 = new TripleGenerator<IO>(3-party, io2, otpack2);
 			configure();
 		}
 
@@ -364,9 +354,9 @@ class BatchEqualitySplit {
   		total_time += (finish.tv_nsec - start.tv_nsec) / 1000000000.0;
       std::cout<<"AND Time: "<<total_time<<std::endl;*/
 
-			/*std::cout<<"Some Outputs"<< std::endl;
+			std::cout<<"Some Outputs"<< std::endl;
 
-			for(int i=0; i<num_cmps; i++) {
+			/*for(int i=0; i<num_cmps; i++) {
 				for(int j=0; j<batch_size; j++) {
 					std::cout<<(int)leaf_eq[j*num_digits*num_cmps+i]<< " ";
 				}
@@ -423,28 +413,27 @@ class BatchEqualitySplit {
 
 
 
-void computeLeafOTsThread(BatchEqualitySplit<NetIO>* compare, uint64_t* x) {
+void computeLeafOTsThread(int party, string address, int port, BatchEqualitySplit<NetIO>* compare, uint64_t* x) {
+	compare->io1 = new NetIO(party==1 ? nullptr:address.c_str(), port);
+	compare->otpack1 = new OTPack<NetIO>(compare->io1, party, compare->beta, compare->l);
+	compare->triple_gen1 = new TripleGenerator<NetIO>(party, compare->io1, compare->otpack1);
   compare->computeLeafOTs(x);
 }
 
-void generate_triples_thread(BatchEqualitySplit<NetIO>* compare) {
+void generate_triples_thread(int party, string address, int port, BatchEqualitySplit<NetIO>* compare) {
+	compare->io2 = new NetIO(party==1 ? nullptr:address.c_str(), port+1);
+	compare->otpack2 = new OTPack<NetIO>(compare->io2, 3-party, compare->beta, compare->l);
+	compare->triple_gen2 = new TripleGenerator<NetIO>(3-party, compare->io2, compare->otpack2);
   compare->generate_triples();
 }
 
 void perform_batch_equality(uint64_t* inputs, int party, int num_cmps, int batch_size, string address, int port, uint8_t* res_shares) {
     int l=62, b=5;
-	  sci::NetIO* ioArr[2];
-    sci::OTPack<sci::NetIO> *otpackArr[2];
 
     uint64_t mask_l;
     if (l == 64) mask_l = -1;
     else mask_l = (1ULL << l) - 1;
 
-    ioArr[0] = new NetIO(address.c_str(), port);
-    ioArr[1] = new NetIO(address.c_str(), port+1);
-
-    otpackArr[0] = new OTPack<NetIO>(ioArr[0], party, b, l);
-    otpackArr[1] = new OTPack<NetIO>(ioArr[1], 3-party, b, l);
     std::cout << "All Base OTs Done" << std::endl;
 
   /*uint64_t comm_sent = 0;
@@ -454,11 +443,11 @@ void perform_batch_equality(uint64_t* inputs, int party, int num_cmps, int batch
 	}*/
 
   BatchEqualitySplit<NetIO>* compare;
-  compare = new BatchEqualitySplit<NetIO>(party, l, b, batch_size, num_cmps, ioArr[0], ioArr[1], otpackArr[0], otpackArr[1]);
+  compare = new BatchEqualitySplit<NetIO>(party, l, b, batch_size, num_cmps);
 
     std::thread cmp_threads[2];
-    cmp_threads[0] = std::thread(computeLeafOTsThread, compare, inputs);
-    cmp_threads[1] = std::thread(generate_triples_thread, compare);
+    cmp_threads[0] = std::thread(computeLeafOTsThread, party, address, port, compare, inputs);
+    cmp_threads[1] = std::thread(generate_triples_thread, party, address, port, compare);
 
     for (int i = 0; i < 2; ++i) {
       cmp_threads[i].join();
@@ -532,10 +521,6 @@ void perform_batch_equality(uint64_t* inputs, int party, int num_cmps, int batch
     /******************* Cleanup ****************/
     /********************************************/
 
-    for (int i = 0; i < 2; i++) {
-        delete ioArr[i];
-        delete otpackArr[i];
-    }
 }
 
 #endif //BATCHEQUALITY_H__

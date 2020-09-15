@@ -87,11 +87,11 @@ public:
 		this->N = N;
 		base_ot = new OTNP<IO>(io);
 		s = new bool[lambda];
-		k0 = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
-		k1 = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
-		d = (block256 *)aligned_alloc(256, block_size*sizeof(block256));
-		c_AND_s = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
-		block_s = (block256 *)aligned_alloc(256, sizeof(block256));
+		k0 = (block256 *)aligned_alloc(32, lambda*sizeof(block256));
+		k1 = (block256 *)aligned_alloc(32, lambda*sizeof(block256));
+		d = (block256 *)aligned_alloc(32, block_size*sizeof(block256));
+		c_AND_s = (block256 *)aligned_alloc(32, lambda*sizeof(block256));
+		block_s = (block256 *)aligned_alloc(32, sizeof(block256));
 		switch (party) {
 			case ALICE:
 				h = new uint8_t*[N];
@@ -113,7 +113,7 @@ public:
 		}
 		G0 = new PRG256[lambda];
 		G1 = new PRG256[lambda];
-		tmp = (block256 *)aligned_alloc(256, block_size/256*sizeof(block256));
+		tmp = (block256 *)aligned_alloc(32, block_size/256*sizeof(block256));
 		extended_r = new uint8_t[block_size];
 	}
 
@@ -156,7 +156,7 @@ public:
 		this->counter = batch_size;
 		if (precomp_masks){
 			delete[] c_AND_s;
-			c_AND_s = (block256 *)aligned_alloc(256, lambda*sizeof(block256));
+			c_AND_s = (block256 *)aligned_alloc(32, lambda*sizeof(block256));
 			precomp_masks = false;
 		}
 		switch (party) {
@@ -274,7 +274,7 @@ public:
 	{
 		length = padded_length(length);
 		block256 q[block_size];
-		qT = (block256 *)aligned_alloc(256, length*sizeof(block256));
+		qT = (block256 *)aligned_alloc(32, length*sizeof(block256));
 		if(!setup) setup_send();
 		if(!precomp_masks) precompute_masks();
 
@@ -296,7 +296,7 @@ public:
 		int old_length = length;
 		length = padded_length(length);
 		block256 t[block_size];
-		tT = (block256 *)aligned_alloc(256, length*sizeof(block256));
+		tT = (block256 *)aligned_alloc(32, length*sizeof(block256));
 		if(not setup) setup_recv();
 
 		uint8_t* r2 = new uint8_t[length];
@@ -304,7 +304,7 @@ public:
 		memcpy(r2, r, old_length);
 		memcpy(r2+old_length, extended_r, length - old_length);
 
-		block256* dT = (block256 *)aligned_alloc(256, length*sizeof(block256));
+		block256* dT = (block256 *)aligned_alloc(32, length*sizeof(block256));
 		for(int i = 0; i < length; i++)
 			dT[i] = _mm256_lddqu_si256((const __m256i*) WH_Code[r2[i]]);
 
@@ -328,7 +328,7 @@ public:
 			int length)
 	{
 		const int bsize = ro_batch_size;
-		block256 *key = (block256 *)aligned_alloc(256, N*bsize*sizeof(block256));
+		block256 *key = (block256 *)aligned_alloc(32, N*bsize*sizeof(block256));
 		block128 *pad = new block128[N*bsize];
 
 		for(int i = 0; i < length; i+=bsize) {
@@ -480,7 +480,7 @@ public:
 			int length)
 	{
 		const int bsize = ro_batch_size;
-		block256 *key = (block256 *)aligned_alloc(256, N*bsize*sizeof(block256));
+		block256 *key = (block256 *)aligned_alloc(32, N*bsize*sizeof(block256));
 		block128 *pad = new block128[N*bsize];
 		uint32_t y_size = (uint32_t)ceil((N*bsize*this->l)/((float)sizeof(T)*8));
 		uint32_t corrected_y_size, corrected_bsize;
