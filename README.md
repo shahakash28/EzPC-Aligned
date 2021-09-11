@@ -1,5 +1,7 @@
 # CrypTFlow: An End-to-end System for Secure TensorFlow Inference [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/mpc-msri/EzPC/issues) [![HitCount](http://hits.dwyl.io/mpc-msri/EzPC.svg)](http://hits.dwyl.io/mpc-msri/EzPC)
 
+This repository is a copy of EzPC repository \[[mpc-msri/EzPC](https://github.com/mpc-msri/EzPC)\]. This copy fixes errors that occurs due to unaligned alloc, so that EzPC/SCI can be used as a sub-repository in building other projects.  
+
 **Reference Papers:**  
 
 [CrypTFlow2: Practical 2-Party Secure Inference](https://eprint.iacr.org/2020/1002)  
