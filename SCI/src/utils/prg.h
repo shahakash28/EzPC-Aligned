@@ -48,7 +48,7 @@ namespace sci {
 class PRG128 { public:
 	uint64_t counter = 0;
 	AES_KEY aes;
-	PRG128(const void * seed = nullptr, int id = 0) {	
+	PRG128(const void * seed = nullptr, int id = 0) {
 		if (seed != nullptr) {
 			reseed(seed, id);
 		} else {
@@ -60,8 +60,8 @@ class PRG128 { public:
 				data[i] = rand_div();
 #else
 			unsigned long long r0, r1;
-			_rdseed64_step(&r0);
-			_rdseed64_step(&r1);
+			_rdrand64_step(&r0);
+			_rdrand64_step(&r1);
 			v = makeBlock128(r0, r1);
 #endif
 			reseed(&v);
@@ -148,7 +148,7 @@ class PRG128 { public:
 			}
 		}
 	}
-	
+
 	template<typename T>
 	void random_mod_p(T* arr, uint64_t size, T prime_mod){
 		T boundary = (((-1*prime_mod)/prime_mod)+1)*prime_mod; //prime_mod*floor((2^l)/prime_mod)
@@ -178,7 +178,7 @@ class PRG128 { public:
 class PRG256 { public:
 	uint64_t counter = 0;
 	AESNI_KEY aes;
-	PRG256(const void * seed = nullptr, int id = 0) {	
+	PRG256(const void * seed = nullptr, int id = 0) {
 		if (seed != nullptr) {
 			reseed(seed, id);
 		} else {
@@ -190,10 +190,10 @@ class PRG256 { public:
 				data[i] = rand_div();
 #else
 			unsigned long long r0, r1, r2, r3;
-			_rdseed64_step(&r0);
-			_rdseed64_step(&r1);
-			_rdseed64_step(&r2);
-			_rdseed64_step(&r3);
+			_rdrand64_step(&r0);
+			_rdrand64_step(&r1);
+			_rdrand64_step(&r2);
+			_rdrand64_step(&r3);
 			v = makeBlock256(r0, r1, r2, r3);
 #endif
 			reseed(&v);
